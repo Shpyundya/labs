@@ -1,0 +1,153 @@
+#pragma warning(disable : 4996)
+#include <stdio.h>
+#include <ctype.h>
+#include <math.h>
+
+long long ConvertToDecimal(char sym[], int radix) {
+  int len_sym = 0;
+  long long int result = 0;
+  int res_index = 0;
+
+  while (sym[len_sym] != '\0') {
+    if (len_sym == 0 &&
+        ((radix > 10 &&
+          !(sym[len_sym] == '-' ||
+            (sym[len_sym] >= '0' && sym[len_sym] < radix + '0') ||
+            (sym[len_sym] >= 'A' && sym[len_sym] < radix + 'A' - 10))) ||
+         (radix <= 10 &&
+          !(sym[len_sym] == '-' ||
+            (sym[len_sym] >= '0' && sym[len_sym] < radix + '0')))))
+      return 2147483648;
+    if (radix <= 10) {
+      if (len_sym != 0 && !(sym[len_sym] >= '0' && sym[len_sym] < radix + '0')) {
+        return 2147483648;
+      }
+    } else {
+      if (len_sym != 0 && !((sym[len_sym] >= '0' && sym[len_sym] < radix + '0') ||
+          (sym[len_sym] >= 'A' && sym[len_sym] < radix + 'A' - 10))) {
+        return 2147483648;
+      }
+    }
+    len_sym++;
+  }
+
+  if (len_sym == 0 || len_sym > 33 || (len_sym == 1 && sym[0] == '-') ||
+      (len_sym == 2 && sym[0] == '-' && sym[1] == '0'))
+    return 2147483648;
+
+  for (int i = 0; i <= len_sym - 1; i++) {
+    if (sym[i] == '-') {
+      continue;
+    }
+    if (isdigit(sym[i])) {
+      if (!(result * radix + sym[i] - '0' <= 2147483648)) return 2147483648;
+      result = result * radix + sym[i] - '0';
+    } else {
+      if (!(result * radix + sym[i] - 'A' + 10 <= 2147483648)) return 2147483648;
+      result = result * radix + sym[i] - 'A' + 10;
+    }
+  }
+
+  if (sym[0] == '-') result *= -1;
+  if (sym[0] != '-' && result > 2147483647) {
+    return 2147483648;
+  }
+  return result;
+}
+
+char* Conversion(long long int number, int radix, char* result) {
+  char vsp[12];
+  int index = 0;
+  int sign = 1;
+
+  if (number == 0) {
+    vsp[0] = '0';
+    index++;
+  }
+
+  if (number < 0) {
+    number = -number;
+    sign = -1;
+  }
+
+  while (number > 0) {
+    int num = number % radix;
+    if (num < 10) {
+      vsp[index++] = '0' + num;
+    } else {
+      vsp[index++] = 'A' + num - 10;
+    }
+    number /= radix;
+  }
+  if (sign == -1) vsp[index++] = '-';
+  vsp[index] = '\0';
+  for (int i = index - 1; i >= 0; i--) {
+    result[index - i - 1] = vsp[i];
+  }
+  result[index] = '\0';
+  return result;
+}
+
+int main() {
+  int base;
+  char input_number[34];
+  int max_number = 0;
+  int changed_max = 0;
+  long long int number;
+  char converted_max[12] = {0};
+
+  while (1) {
+    printf("Enter the base of the number system (from 2 to 36): ");
+    if (scanf("%d", &base) != 1) {
+      while (getchar() != '\n') {
+      }  // Очистка буфера
+      continue;
+    }
+
+    if (base >= 2 && base <= 36) {
+      char c;
+      if ((c = getchar()) != '\n') {
+        while (getchar() != '\n') {
+        }  // Очистка буфера
+        continue;
+      }
+      break;
+    } else {
+    }
+  }
+  while (1) {
+    printf("Enter a number in base %d or 'Stop' to complete: ", base);
+    int index = 0;
+    char c;
+    while ((c = getchar()) != '\n' && c != EOF) {
+      if (index > 32) {
+        input_number[0] = '\0';
+        continue;
+      }
+      input_number[index++] = c;
+    }
+    input_number[index] = '\0';
+
+    if (index == 4 && input_number[0] == 'S' && input_number[1] == 't' && input_number[2] == 'o' &&
+        input_number[3] == 'p') {
+      break;
+    }
+    number = ConvertToDecimal(input_number, base);
+    if (number <= _CRT_INT_MAX) {
+      if (llabs(number) >= llabs(max_number)) {
+        max_number = number;
+        changed_max = 1;
+      }
+    }
+  }
+  for (int i = 9; i <= 36; i += 9) {
+    if (changed_max == 1) {
+      printf("%d: %d %s\n", i, max_number, Conversion(max_number, i, converted_max));
+    } else {
+      printf("%d: None None\n", i);
+    }
+  }
+  
+
+  return 0;
+}
