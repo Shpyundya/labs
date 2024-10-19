@@ -1,0 +1,181 @@
+#include <ctype.h>
+#include <stdio.h>
+#include <limits.h>
+#include <stdlib.h>
+
+int GetFiles(int argc, char** argv, char** input, char** output) {
+  if (argc != 3) {
+    return 1;
+  }
+  for (int j = 1; j <= 2; j++) {
+    if (argv[j][0] == '.' && argv[j][1] == '/') {
+      for (int i = 2; argv[j][i]; i++) {
+        if (!(argv[j][i + 1])) argv[j][i - 1] = '\0';
+        char temp = argv[j][i];
+        argv[j][i - 2] = temp;
+      }
+    }
+  }
+  *input = argv[1];
+  *output = argv[2];
+  int not_same = 0;
+  char input_path[PATH_MAX];
+  char output_path[PATH_MAX];
+  realpath(argv[1], input_path);
+  realpath(argv[2], output_path);
+    for (int i = 0; (input_path[i] && output_path[i]); i++) {
+        if(input_path[i] != output_path[i]) not_same = 1;
+    }
+    if (!not_same) {return 1;}
+  return 0;
+}
+
+long long Conversion(char sym[], int radix) {
+  int len = 0;
+  long long int result = 0;
+  while (sym[len] != '\0') {
+    len++;
+  }
+  if (len == 0) return -1;
+  for (int i = 0; i <= len - 1; i++) {
+    if (isdigit(sym[i])) {
+      if (!(result * radix + sym[i] - '0' <= 2147483648)) return -1;
+      result = result * radix + sym[i] - '0';
+    } else {
+      if (!(result * radix + sym[i] - 'A' + 10 <= 2147483648)) return -1;
+      result = result * radix + sym[i] - 'A' + 10;
+    }
+  }
+  return result;
+}
+
+void ConvertToDecimal(char* input_file, char* output_file) {
+  FILE* input = NULL;
+  FILE* output = NULL;
+  char sym; // для каждого символа входного файла
+  char number[34] = {'\0'};  // сюда записываем символы из входного файла
+  int index = 0; // чтобы число не перевалило за границы int
+  int minus = 0; // чтобы контролировать минус
+  int base = 2; // чтобы записывать основание СС
+  int another = 0; // чтобы контролировать другие символы кроме цифр и минуса
+  long long int res = 0;
+  int only_zero = 1;
+  if ((input = fopen(input_file, "r")) == NULL) {
+    printf("Failed to open input file\n");
+    return;
+  }
+  if ((output = fopen(output_file, "w")) == NULL) {
+    printf("Failed to open output file\n");
+    fclose(input);
+    return;
+  }
+
+  while ((sym = fgetc(input)) != EOF) {
+      if (sym == '\r') {continue;}
+    if (sym != ' ' && sym != '\t' && sym != '\n') {
+      if (sym == '-') {
+        if (number[0] == '\0') {
+          minus++;
+          continue;
+        } else {
+          minus += 2;
+        }
+      } 
+      if (isalnum(sym) && index <= 32) {
+        if (isalpha(sym)) {
+          sym = toupper(sym);
+          if (sym - 'A' + 11 > base) base = sym - 'A' + 11;
+          if (sym != '0') only_zero = 0;
+        } else {
+          if (sym - '0' + 1 > base) base = sym - '0' + 1;
+          if (sym != '0') only_zero = 0;
+        }
+        if (!only_zero) {
+          number[index] = sym;
+          index++;
+        } else {
+          number[0] = '0';
+          number[1] = '\0';
+        }
+      } else {
+        another = 1;
+        continue;
+      }
+    } else {
+      if (number[0] != '\0' && minus <= 1 && another == 0) {
+        if (!only_zero) {
+          number[index] = '\0';
+        }
+        res = Conversion(number, base);
+        if (res != -1) {
+          if (minus == 1 && res != 0) {
+            if (res < INT_MIN) {
+              index = 0;
+              minus = 0;
+              another = 0;
+              base = 2;
+              only_zero = 1;
+              number[0] = '\0';
+              res = 0;
+              continue;
+            }
+            res *= -1;
+            fputc('-', output);
+            fputs(number, output);
+            fprintf(output, " %d %lld\n", base, res);
+          } else if (minus == 0) {
+            if (res > INT_MAX) {
+              index = 0;
+              minus = 0;
+              another = 0;
+              base = 2;
+              only_zero = 1;
+              number[0] = '\0';
+              res = 0;
+              continue;
+            }
+            fputs(number, output);
+            fprintf(output, " %d %lld\n", base, res);
+          }
+        }
+      }
+      index = 0;
+      minus = 0;
+      another = 0;
+      base = 2;
+      only_zero = 1;
+      number[0] = '\0';
+      res = 0;
+    }
+  }
+  if (!only_zero) {
+    number[index] = '\0';
+  }
+  res = Conversion(number, base);
+  if (res != -1) {
+    if (minus == 1 && res != 0) {
+      res *= -1;
+      fputc('-', output);
+      fputs(number, output);
+      fprintf(output, " %d %lld\n", base, res);
+    } else if (minus == 0) {
+      fputs(number, output);
+      fprintf(output, " %d %lld\n", base, res);
+    }
+  }
+  
+  fclose(input);
+  fclose(output);
+}
+
+int main(int argc, char** argv) {
+  char* input_file;
+  char* output_file;
+
+  if (GetFiles(argc, argv, &input_file, &output_file)) {
+    printf("Incorrect file names\n");
+    return 1;
+  }
+  ConvertToDecimal(input_file, output_file);
+  return 0;
+}
